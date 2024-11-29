@@ -3,7 +3,12 @@ from django.test import TestCase
 from django.urls import reverse
 
 from taxi.forms import DriverCreationForm, CarForm
-from taxi.models import Manufacturer, Car
+from taxi.models import Manufacturer, Car, Driver
+
+
+MANUFACTURER_URL = reverse("taxi:manufacturer-list")
+DRIVER_URL = reverse("taxi:driver-list")
+CAR_URL = reverse("taxi:car-list")
 
 
 class FormsTests(TestCase):
@@ -82,3 +87,84 @@ class FormsTests(TestCase):
             new_manufacturer.country,
             self.manufacturer_data["country"]
         )
+
+    def test_create_manufacture_with_invalid_data(self):
+        data = {
+            "name": "zaz",
+        }
+        res = self.client.post(
+            reverse("taxi:manufacturer-create"),
+            data=data
+        )
+        self.assertNotEqual(res.status_code, 201)
+
+    def test_create_car_with_invalid_data(self):
+        data = {
+            "model": "x5",
+            "manufacturer": self.manufacturer
+        }
+
+        res = self.client.post(
+            reverse("taxi:car-create"),
+            data=data
+        )
+
+        self.assertNotEqual(res.status_code, 201)
+
+    def test_create_driver_with_invalid_data(self):
+        data = {
+            "username": "test_username1234",
+            "password1": "test1234",
+            "password2": "test1234"
+        }
+
+        res = self.client.post(
+            reverse("taxi:driver-create"),
+            data=data
+        )
+
+        self.assertNotEqual(res.status_code, 201)
+
+    def test_search_car_with_invalid_data(self):
+        Car.objects.create(
+            model="X5",
+            manufacturer=Manufacturer.objects.create(
+                name="BMW",
+                country="Germany"
+            )
+        )
+        Car.objects.create(
+            model="S-Class",
+            manufacturer=Manufacturer.objects.create(
+                name="Mercedes",
+                country="Germany"
+            )
+        )
+        res = self.client.get(f"{CAR_URL}?model=wrg2ff")
+        self.assertEqual(list(res.context["car_list"]), [])
+
+    def test_search_driver_with_invalid_data(self):
+        Driver.objects.create_user(
+            username="test1user",
+            password="test1user",
+            license_number="ABC12345"
+        )
+        Driver.objects.create_user(
+            username="test2user",
+            password="test2user",
+            license_number="DEF67890"
+        )
+        res = self.client.get(f"{DRIVER_URL}?username=invalidtest")
+        self.assertEqual(list(res.context["driver_list"]), [])
+
+    def test_search_manufacturer_with_invalid_data(self):
+        Manufacturer.objects.create(
+            name="Alfa Romeo",
+            country="Italy"
+        )
+        Manufacturer.objects.create(
+            name="BMW",
+            country="Germany"
+        )
+        res = self.client.get(f"{MANUFACTURER_URL}?name=zaz")
+        self.assertEqual(list(res.context["manufacturer_list"]), [])
